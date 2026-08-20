@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Antenas - ERB Maps{% endblock %}
+
+{% block content %}
+<div class="antenas-page-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Estações Rádio Base (ERB)</h1>
+            <p class="page-subtitle">Visualização tabular de todos os registros armazenados no banco de dados SQLite.</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('upload.upload_file') }}" class="btn btn-primary">
+                ➕ Nova Importação
+            </a>
+            <a href="{{ url_for('map.view_map') }}" class="btn btn-secondary">
+                🗺️ Visualizar no Mapa
+            </a>
+        </div>
+    </div>
+
+    <!-- Barra de Filtros Rápida -->
+    <div class="panel-card mb-4">
+        <div class="panel-body">
+            <form action="{{ url_for('antennas.list_antenas') }}" method="GET" class="filter-grid-form">
+                <div class="form-group">
+                    <label class="form-label">Busca Geral:</label>
+                    <input type="text" name="q" class="form-control" placeholder="Buscar por nome, crime..." value="{{ current_filters.q or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Operadora:</label>
+                    <select name="operadora_id" class="form-control">
+                        <option value="">Todas</option>
+                        {% for op in filter_options.operadoras %}
+                            <option value="{{ op.id }}" {% if current_filters.operadora_id|string == op.id|string %}selected{% endif %}>
+                                {{ op.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Município:</label>
+                    <select name="municipio_id" class="form-control">
+                        <option value="">Todos</option>
+                        {% for mun in filter_options.municipios %}
+                            <option value="{{ mun.id }}" {% if current_filters.municipio_id|string == mun.id|string %}selected{% endif %}>
+                                {{ mun.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group d-flex align-end">
+                    <button type="submit" class="btn btn-primary">Filtrar</button>
+                    <a href="{{ url_for('antennas.list_antenas') }}" class="btn btn-outline ml-2">Limpar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela de Antenas -->
+    <div class="panel-card">
+        <div class="panel-header d-flex justify-between align-center">
+            <h2 class="panel-title">Lista de Antenas ({{ "{:,}".format(total_items).replace(',', '.') }} encontradas)</h2>
+            <span class="text-muted">Página {{ page }} de {{ total_pages }}</span>
+        </div>
+
+        <div class="panel-body table-responsive">
+            {% if antenas %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nome / Identificação</th>
+                            <th>Operadora</th>
+                            <th>Município</th>
+                            <th>Latitude / Longitude</th>
+                            <th>Azimute</th>
+                            <th>Alcance</th>
+                            <th>Abertura</th>
+                            <th>Crime / Delito</th>
+                            <th>Plotar</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in antenas %}
+                            <tr>
+                                <td>{{ a['ponto'] or a['id'] }}</td>
+                                <td><strong>{{ a['nome'] }}</strong></td>
+                                <td>
+                                    <span class="badge-operator" style="background-color: {{ a['operadora_cor'] or '#3b82f6' }};">
+                                        {{ a['operadora_nome'] or 'N/A' }}
+                                    </span>
+                                </td>
+                                <td>{{ a['municipio_nome'] or 'N/A' }}</td>
+                                <td class="font-mono text-sm">
+                                    {{ "%.5f"|format(a['latitude']) }}, {{ "%.5f"|format(a['longitude']) }}
+                                </td>
+                                <td>{{ a['azimute']|round|int }}°</td>
+                                <td>{{ a['distancia']|round|int }} m</td>
+                                <td>{{ a['raio']|round|int }}°</td>
+                                <td><span class="crime-tag">{{ a['crime'] or '-' }}</span></td>
+                                <td>
+                                    {% if a['plotar'] == 1 %}
+                                        <span class="status-dot dot-green" title="Visível no mapa"></span> Sim
+                                    {% else %}
+                                        <span class="status-dot dot-gray" title="Oculto no mapa"></span> Não
+                                    {% endif %}
+                                </td>
+                                <td class="action-cell">
+                                    <a href="{{ url_for('map.view_map', focus_id=a['id']) }}" class="btn-icon" title="Ver no Mapa">
+                                        🗺️
+                                    </a>
+                                    <button type="button" class="btn-icon btn-view-detail" data-id="{{ a['id'] }}" title="Ver Detalhes">
+                                        👁️
+                                    </button>
+                                    <form action="{{ url_for('antennas.delete_antenna', antenna_id=a['id']) }}" method="POST" class="d-inline" onsubmit="return confirm('Deseja realmente excluir esta antena?');">
+                                        <button type="submit" class="btn-icon btn-delete" title="Excluir">
+                                            🗑️
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- Paginação -->
+                {% if total_pages > 1 %}
+                    <div class="pagination-wrapper mt-4">
+                        <div class="pagination">
+                            {% if page > 1 %}
+                                <a href="{{ url_for('antennas.list_antenas', page=page-1, **current_filters) }}" class="page-link">&laquo; Anterior</a>
+                            {% endif %}
+
+                            <span class="page-info">Página {{ page }} de {{ total_pages }}</span>
+
+                            {% if page < total_pages %}
+                                <a href="{{ url_for('antennas.list_antenas', page=page+1, **current_filters) }}" class="page-link">Próxima &raquo;</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <p>Nenhuma antena encontrada com os filtros atuais.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalhes da Antena -->
+<div class="modal-backdrop" id="detail-modal" style="display: none;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modal-antenna-title">Detalhes da Antena</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-antenna-body">
+            <div class="spinner"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function closeModal() {
+        document.getElementById('detail-modal').style.display = 'none';
+    }
+
+    document.querySelectorAll('.btn-view-detail').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-id');
+            const modal = document.getElementById('detail-modal');
+            const modalBody = document.getElementById('modal-antenna-body');
+            const modalTitle = document.getElementById('modal-antenna-title');
+            
+            modal.style.display = 'flex';
+            modalBody.innerHTML = '<div class="spinner"></div> Carregando dados...';
+
+            try {
+                const res = await fetch(`/antenas/${id}`);
+                const data = await res.json();
+                
+                modalTitle.innerText = `📡 ${data.nome || 'ERB'}`;
+                modalBody.innerHTML = `
+                    <div class="detail-grid">
+                        <div class="detail-row"><strong>Operadora:</strong> <span>${data.operadora_nome || 'N/A'}</span></div>
+                        <div class="detail-row"><strong>Município:</strong> <span>${data.municipio_nome || 'N/A'} (${data.municipio_uf || 'MG'})</span></div>
+                        <div class="detail-row"><strong>Tecnologia:</strong> <span>${data.tecnologia_nome || 'N/A'}</span></div>
+                        <div class="detail-row"><strong>Crime / Delito:</strong> <span class="text-danger font-bold">${data.crime || 'N/A'}</span></div>
+                        <div class="detail-row"><strong>Descrição:</strong> <span>${data.descricao || '-'}</span></div>
+                        <div class="detail-row"><strong>Latitude:</strong> <span>${data.latitude}</span></div>
+                        <div class="detail-row"><strong>Longitude:</strong> <span>${data.longitude}</span></div>
+                        <div class="detail-row"><strong>Azimute:</strong> <span>${data.azimute}°</span></div>
+                        <div class="detail-row"><strong>Alcance (Distância):</strong> <span>${data.distancia} m</span></div>
+                        <div class="detail-row"><strong>Abertura de Raio:</strong> <span>${data.raio}°</span></div>
+                        <div class="detail-row"><strong>Data / Hora Registro:</strong> <span>${data.data_registro || ''} ${data.hora_registro || ''}</span></div>
+                        <div class="detail-row"><strong>Arquivo de Origem:</strong> <span>${data.arquivo_origem || 'N/A'}</span></div>
+                    </div>
+                `;
+            } catch (err) {
+                modalBody.innerHTML = '<p class="text-danger">Erro ao carregar detalhes.</p>';
+            }
+        });
+    });
+</script>
+{% endblock %}

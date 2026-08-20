@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+
+{% block title %}Mapa Interativo ERB - ERB Maps{% endblock %}
+{% block body_class %}map-page{% endblock %}
+
+{% block content %}
+<div class="map-page-wrapper">
+    <!-- Barra Superior de Controle -->
+    <div class="map-topbar">
+        <div class="topbar-left">
+            <button class="btn btn-sm btn-secondary" id="btn-toggle-filters" aria-controls="map-sidebar" aria-expanded="false">
+                <span class="icon">⚙️</span>
+                <span class="text">Filtros</span>
+            </button>
+            <span class="counter-badge" id="map-counter-badge">
+                <strong>{{ total_count }}</strong> antenas visíveis
+            </span>
+        </div>
+
+        <div class="topbar-right">
+            <button type="button" class="btn btn-sm btn-primary" id="btn-add-point" {% if not active_project or current_user.type_user == 'view' %}disabled title="Projeto ou permissão de edição necessários"{% endif %}>
+                + Adicionar Ponto
+            </button>
+            <a href="{{ url_for('points.list_points') }}" class="btn btn-sm btn-outline">Gerenciar Pontos</a>
+            <a href="{{ url_for('map.export_map', **request.args) }}" class="btn btn-sm btn-primary" id="btn-export-map" download="mapa_erbs.html">
+                &#11015; Exportar HTML
+            </a>
+            <a href="{{ url_for('antennas.list_antenas', **current_filters) }}" class="btn btn-sm btn-outline" id="btn-switch-table">
+                📋 Ver Tabela
+            </a>
+            <a href="{{ url_for('map.view_map') }}" class="btn btn-sm btn-outline" title="Limpar Filtros">
+                🔄 Limpar
+            </a>
+        </div>
+    </div>
+
+    <div class="map-layout">
+        {% if not active_project %}
+        <div class="no-project-overlay">
+            <strong>Nenhum projeto selecionado.</strong>
+            <span>Selecione um projeto para visualizar ERBs e adicionar pontos.</span>
+            <a href="{{ url_for('projects.list_projects') }}" class="btn btn-primary btn-sm">Selecionar Projeto</a>
+        </div>
+        {% endif %}
+        <!-- Sidebar de Filtros -->
+        <aside class="map-sidebar" id="map-sidebar">
+            <div class="sidebar-header">
+                <h3 class="sidebar-title">🔍 Filtrar Antenas</h3>
+                <button class="sidebar-close" id="btn-close-sidebar" aria-label="Fechar Filtros">&times;</button>
+            </div>
+
+            <form action="{{ url_for('map.view_map') }}" method="GET" class="filter-form" id="map-filter-form">
+                <div class="form-group">
+                    <label for="filter-q" class="form-label">Busca Geral:</label>
+                    <input type="text" name="q" id="filter-q" class="form-control" placeholder="Nome, Crime, Descrição..." value="{{ current_filters.q or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="filter-operadora" class="form-label">Operadora:</label>
+                    <select name="operadora_id" id="filter-operadora" class="form-control">
+                        <option value="">-- Todas as Operadoras --</option>
+                        {% for op in filter_options.operadoras %}
+                            <option value="{{ op.id }}" {% if current_filters.operadora_id|string == op.id|string %}selected{% endif %}>
+                                {{ op.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filter-municipio" class="form-label">Município:</label>
+                    <select name="municipio_id" id="filter-municipio" class="form-control">
+                        <option value="">-- Todos os Municípios --</option>
+                        {% for mun in filter_options.municipios %}
+                            <option value="{{ mun.id }}" {% if current_filters.municipio_id|string == mun.id|string %}selected{% endif %}>
+                                {{ mun.nome }} ({{ mun.uf }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filter-tecnologia" class="form-label">Tecnologia:</label>
+                    <select name="tecnologia_id" id="filter-tecnologia" class="form-control">
+                        <option value="">-- Todas as Tecnologias --</option>
+                        {% for tec in filter_options.tecnologias %}
+                            <option value="{{ tec.id }}" {% if current_filters.tecnologia_id|string == tec.id|string %}selected{% endif %}>
+                                {{ tec.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {% if filter_options.crimes %}
+                <div class="form-group">
+                    <label for="filter-crime" class="form-label">Delito / Crime:</label>
+                    <select name="crime" id="filter-crime" class="form-control">
+                        <option value="">-- Todos os Delitos --</option>
+                        {% for c in filter_options.crimes %}
+                            <option value="{{ c }}" {% if current_filters.crime == c %}selected{% endif %}>
+                                {{ c }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+
+                {% if filter_options.fontes %}
+                <div class="form-group">
+                    <label for="filter-fonte" class="form-label">Fonte / Tipo:</label>
+                    <select name="fonte" id="filter-fonte" class="form-control">
+                        <option value="">-- Todas as Fontes --</option>
+                        {% for f in filter_options.fontes %}
+                            <option value="{{ f }}" {% if current_filters.fonte == f %}selected{% endif %}>
+                                {{ f }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+
+                <div class="form-check-group">
+                    <label class="form-check-label">
+                        <input type="checkbox" name="plotar" value="1" {% if current_filters.plotar == '1' or current_filters.plotar is none %}checked{% endif %}>
+                        Apenas marcadas para plotar (PLOTAR=SIM)
+                    </label>
+                </div>
+
+                <div class="form-check-group">
+                    <label class="form-check-label">
+                        <input type="checkbox" name="cluster" value="1" id="chk-cluster" {% if request.args.get('cluster') == '1' %}checked{% endif %}>
+                        Habilitar Agrupamento (Cluster)
+                    </label>
+                </div>
+
+                <div class="filter-actions mt-3">
+                    <button type="submit" class="btn btn-primary btn-block" id="btn-apply-filters">
+                        🔍 Aplicar Filtros
+                    </button>
+                    <a href="{{ url_for('map.view_map') }}" class="btn btn-outline btn-block mt-2">
+                        Limpar Filtros
+                    </a>
+                </div>
+            </form>
+        </aside>
+
+        <!-- Container do Iframe do Mapa Folium -->
+        <main class="map-viewport">
+            <div class="map-selection-notice" id="map-selection-notice" hidden>
+                Clique no mapa para definir a localização do ponto.
+                <button type="button" id="btn-cancel-selection">Cancelar</button>
+            </div>
+            <div class="map-loading-overlay" id="map-loading">
+                <div class="spinner-lg"></div>
+                <span>Renderizando Mapa Geoespacial...</span>
+            </div>
+            <iframe 
+                src="{{ url_for('map.embed_map', **request.args) }}" 
+                id="folium-map-iframe" 
+                class="folium-frame"
+                title="Mapa Interativo de Antenas ERB"
+            ></iframe>
+        </main>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="map-point-modal" style="display:none;">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="map-point-modal-title">
+        <form id="map-point-form">
+            <div class="modal-header">
+                <h3 id="map-point-modal-title">Adicionar Ponto</h3>
+                <button type="button" class="modal-close" id="btn-close-map-point" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="map-point-type">Tipo</label>
+                    <select class="form-control" id="map-point-type" required>
+                        {% for type in point_types %}<option value="{{ type }}">{{ type }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="map-point-description">Descrição</label>
+                    <textarea class="form-control" id="map-point-description" rows="4" maxlength="1000" required></textarea>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label" for="map-point-latitude">Latitude</label>
+                        <input class="form-control" id="map-point-latitude" type="number" min="-90" max="90" step="any" required readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="map-point-longitude">Longitude</label>
+                        <input class="form-control" id="map-point-longitude" type="number" min="-180" max="180" step="any" required readonly>
+                    </div>
+                </div>
+                <p class="form-error" id="map-point-error" role="alert"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="btn-cancel-map-point">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="btn-save-map-point">Salvar Ponto</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const toggleBtn = document.getElementById('btn-toggle-filters');
+        const closeBtn = document.getElementById('btn-close-sidebar');
+        const sidebar = document.getElementById('map-sidebar');
+        const mapFrame = document.getElementById('folium-map-iframe');
+        const loading = document.getElementById('map-loading');
+        const addPointBtn = document.getElementById('btn-add-point');
+        const selectionNotice = document.getElementById('map-selection-notice');
+        const pointModal = document.getElementById('map-point-modal');
+        const pointForm = document.getElementById('map-point-form');
+        const pointError = document.getElementById('map-point-error');
+
+        const setPointSelection = (active) => {
+            selectionNotice.hidden = !active;
+            addPointBtn.classList.toggle('btn-secondary', active);
+            mapFrame?.contentWindow?.postMessage(
+                {type: 'erb:set-point-selection', active},
+                window.location.origin
+            );
+        };
+
+        const closePointModal = () => {
+            pointModal.style.display = 'none';
+            pointError.textContent = '';
+        };
+
+        addPointBtn.addEventListener('click', () => setPointSelection(true));
+        document.getElementById('btn-cancel-selection').addEventListener('click', () => setPointSelection(false));
+        document.getElementById('btn-close-map-point').addEventListener('click', closePointModal);
+        document.getElementById('btn-cancel-map-point').addEventListener('click', closePointModal);
+        pointModal.addEventListener('click', event => { if (event.target === pointModal) closePointModal(); });
+
+        window.addEventListener('message', event => {
+            if (event.origin !== window.location.origin) return;
+            if (!event.data || event.data.type !== 'erb:map-point-selected') return;
+            setPointSelection(false);
+            pointForm.reset();
+            document.getElementById('map-point-latitude').value = Number(event.data.latitude).toFixed(7);
+            document.getElementById('map-point-longitude').value = Number(event.data.longitude).toFixed(7);
+            pointModal.style.display = 'flex';
+            document.getElementById('map-point-type').focus();
+        });
+
+        pointForm.addEventListener('submit', async event => {
+            event.preventDefault();
+            if (!pointForm.reportValidity()) return;
+            const saveButton = document.getElementById('btn-save-map-point');
+            saveButton.disabled = true;
+            pointError.textContent = '';
+            try {
+                const response = await fetch('/api/pontos', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        tipo: document.getElementById('map-point-type').value,
+                        descricao: document.getElementById('map-point-description').value.trim(),
+                        latitude: Number(document.getElementById('map-point-latitude').value),
+                        longitude: Number(document.getElementById('map-point-longitude').value)
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Não foi possível salvar o ponto.');
+                closePointModal();
+                mapFrame.contentWindow.location.reload();
+            } catch (error) {
+                pointError.textContent = error.message;
+            } finally {
+                saveButton.disabled = false;
+            }
+        });
+
+        const setSidebarOpen = (isOpen) => {
+            sidebar.classList.toggle('open', isOpen);
+            toggleBtn?.setAttribute('aria-expanded', String(isOpen));
+        };
+        
+        if (toggleBtn && sidebar) {
+            toggleBtn.addEventListener('click', () => {
+                setSidebarOpen(!sidebar.classList.contains('open'));
+            });
+        }
+        if (closeBtn && sidebar) {
+            closeBtn.addEventListener('click', () => {
+                setSidebarOpen(false);
+            });
+        }
+
+        // O Leaflet precisa recalcular seu canvas depois que o iframe recebe
+        // as dimensoes definitivas do layout flexivel.
+        if (mapFrame) {
+            const refreshMapSize = () => {
+                try {
+                    mapFrame.contentWindow.dispatchEvent(new Event('resize'));
+                } catch (error) {
+                    // O mapa continua funcional caso o navegador restrinja o iframe.
+                }
+            };
+
+            mapFrame.addEventListener('load', () => {
+                if (loading) loading.hidden = true;
+                requestAnimationFrame(refreshMapSize);
+            });
+
+            if ('ResizeObserver' in window) {
+                new ResizeObserver(refreshMapSize).observe(mapFrame);
+            }
+        }
+    });
+</script>
+{% endblock %}

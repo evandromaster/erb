@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - ERB Maps{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Painel de Controle</h1>
+            <p class="page-subtitle">Visão geral do banco de dados e monitoramento das estações rádio base.</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('upload.upload_file') }}" class="btn btn-primary" id="btn-quick-upload">
+                <span>➕</span> Importar Planilha
+            </a>
+            <a href="{{ url_for('map.view_map') }}" class="btn btn-secondary" id="btn-quick-map">
+                <span>🗺️</span> Abrir Mapa
+            </a>
+        </div>
+    </div>
+
+    <!-- 1. Cards de Métricas Principais (KPIs) -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon icon-blue">📡</div>
+            <div class="kpi-content">
+                <span class="kpi-label">ANTENAS</span>
+                <span class="kpi-value" id="kpi-antenas">{{ "{:,}".format(metrics.total_antenas).replace(',', '.') }}</span>
+                <span class="kpi-subtext">Setores cadastrados</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon icon-green">🏙️</div>
+            <div class="kpi-content">
+                <span class="kpi-label">MUNICÍPIOS</span>
+                <span class="kpi-value" id="kpi-municipios">{{ metrics.total_municipios }}</span>
+                <span class="kpi-subtext">Cidades mapeadas</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon icon-purple">🏢</div>
+            <div class="kpi-content">
+                <span class="kpi-label">OPERADORAS</span>
+                <span class="kpi-value" id="kpi-operadoras">{{ metrics.total_operadoras }}</span>
+                <span class="kpi-subtext">Empresas ativas</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon icon-amber">🕒</div>
+            <div class="kpi-content">
+                <span class="kpi-label">ÚLTIMA IMPORTAÇÃO</span>
+                <span class="kpi-value kpi-value-sm" id="kpi-ultima-importacao">
+                    {% if metrics.ultima_importacao %}
+                        {{ metrics.ultima_importacao['data_importacao'][:16] }}
+                    {% else %}
+                        Nenhuma
+                    {% endif %}
+                </span>
+                <span class="kpi-subtext">
+                    {% if metrics.ultima_importacao %}
+                        {{ metrics.ultima_importacao['nome_original'] }}
+                    {% else %}
+                        Aguardando planilha
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Grid de Distribuição e Ações Rápidas -->
+    <div class="content-grid-2col">
+        <!-- Card de Operadoras -->
+        <div class="panel-card">
+            <div class="panel-header">
+                <h2 class="panel-title">Operadoras & Cobertura</h2>
+            </div>
+            <div class="panel-body">
+                {% if metrics.dist_operadoras %}
+                    <ul class="stats-list">
+                        {% for op in metrics.dist_operadoras %}
+                            <li class="stats-item">
+                                <div class="stats-info">
+                                    <span class="color-dot" style="background-color: {{ op['cor'] }};"></span>
+                                    <span class="stats-name">{{ op['operadora'] }}</span>
+                                </div>
+                                <div class="stats-badge">
+                                    <strong>{{ op['total'] }}</strong> antenas
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="empty-state">
+                        <p>Nenhuma operadora registrada ainda. Faça o upload de uma planilha.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Card de Tecnologias / Resumo -->
+        <div class="panel-card">
+            <div class="panel-header">
+                <h2 class="panel-title">Tecnologias & Redes</h2>
+            </div>
+            <div class="panel-body">
+                {% if metrics.dist_tecnologias %}
+                    <ul class="stats-list">
+                        {% for tec in metrics.dist_tecnologias %}
+                            <li class="stats-item">
+                                <div class="stats-info">
+                                    <span class="tech-badge">{{ tec['tecnologia'] }}</span>
+                                </div>
+                                <div class="stats-badge">
+                                    <strong>{{ tec['total'] }}</strong> registros
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="empty-state">
+                        <p>Nenhuma tecnologia registrada no momento.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Histórico Recente de Importações -->
+    <div class="panel-card mt-4">
+        <div class="panel-header">
+            <h2 class="panel-title">Últimas Importações de Planilhas</h2>
+            <a href="{{ url_for('antennas.history') }}" class="btn-link">Ver todas &rarr;</a>
+        </div>
+        <div class="panel-body table-responsive">
+            {% if metrics.ultimas_importacoes %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Data/Hora</th>
+                            <th>Arquivo</th>
+                            <th>Aba</th>
+                            <th>Total Linhas</th>
+                            <th>Importados</th>
+                            <th>Erros</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for imp in metrics.ultimas_importacoes %}
+                            <tr>
+                                <td>{{ imp['data_importacao'][:19] }}</td>
+                                <td><strong>{{ imp['nome_original'] }}</strong></td>
+                                <td><span class="badge-subtle">{{ imp['aba_selecionada'] or 'Padrão' }}</span></td>
+                                <td>{{ imp['total_registros'] }}</td>
+                                <td class="text-success font-bold">{{ imp['registros_importados'] }}</td>
+                                <td class="{% if imp['registros_erro'] > 0 %}text-danger font-bold{% else %}text-muted{% endif %}">
+                                    {{ imp['registros_erro'] }}
+                                </td>
+                                <td>
+                                    {% if imp['status'] == 'sucesso' %}
+                                        <span class="status-pill pill-success">Sucesso</span>
+                                    {% elif imp['status'] == 'parcial' %}
+                                        <span class="status-pill pill-warning">Parcial</span>
+                                    {% else %}
+                                        <span class="status-pill pill-danger">Erro</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">
+                    <p>Nenhuma planilha foi importada ainda.</p>
+                    <a href="{{ url_for('upload.upload_file') }}" class="btn btn-primary btn-sm mt-2">Fazer Primeiro Upload</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

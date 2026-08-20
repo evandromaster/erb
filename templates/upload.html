@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Importar Planilha Excel - ERB Maps{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+    {% if not active_project %}
+    <div class="alert alert-warning">
+        <span>Selecione um projeto antes de importar os dados.</span>
+        <a href="{{ url_for('projects.list_projects') }}" class="btn btn-sm btn-outline">Gerenciar Projetos</a>
+    </div>
+    {% else %}
+    <div class="active-project-banner">Importação destinada ao projeto: <strong>{{ active_project.nome }}</strong></div>
+    {% endif %}
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Upload de Planilha ERB</h1>
+            <p class="page-subtitle">Envie uma planilha Excel (.xlsx ou .xls) para processamento e mapeamento automático.</p>
+        </div>
+    </div>
+
+    <div class="upload-grid">
+        <!-- Formulário de Upload -->
+        <div class="panel-card">
+            <div class="panel-body">
+                <form action="{{ url_for('upload.upload_file') }}" method="POST" enctype="multipart/form-data" id="upload-form">
+                    
+                    <div class="drop-zone" id="drop-zone">
+                        <div class="drop-zone-icon">📊</div>
+                        <h3 class="drop-zone-title">Arraste e solte o arquivo aqui</h3>
+                        <p class="drop-zone-desc">ou clique para selecionar do seu dispositivo</p>
+                        <input type="file" name="file" id="file-input" class="file-input" accept=".xlsx,.xls" required>
+                        <div class="file-info" id="file-info" style="display: none;">
+                            <span class="file-name" id="file-name-display"></span>
+                            <span class="file-size" id="file-size-display"></span>
+                        </div>
+                    </div>
+
+                    <!-- Seletor de Aba da Planilha -->
+                    <div class="form-group mt-3" id="sheet-selection-group" style="display: none;">
+                        <label for="sheet_name" class="form-label">Aba da Planilha (Opcional):</label>
+                        <select name="sheet_name" id="sheet_name" class="form-control">
+                            <option value="">-- Primeira Aba (Padrão) --</option>
+                        </select>
+                        <small class="form-hint">Selecione caso seus dados estejam em uma aba específica (ex: tbl_antenas ou Sheet1).</small>
+                    </div>
+
+                    <div class="form-actions mt-4">
+                        {% if active_project %}
+                        <button type="submit" class="btn btn-primary btn-block btn-lg" id="btn-submit-upload">
+                            <span class="btn-text">🚀 Iniciar Importação</span>
+                            <span class="spinner" id="upload-spinner" style="display: none;"></span>
+                        </button>
+                        {% else %}
+                        <a href="{{ url_for('projects.list_projects') }}" class="btn btn-primary btn-block btn-lg" id="btn-select-project-before-upload">
+                            Selecionar Projeto para Importar
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Instruções de Colunas e Formato -->
+        <div class="panel-card help-card">
+            <div class="panel-header">
+                <h3 class="panel-title">💡 Formato e Colunas Aceitas</h3>
+            </div>
+            <div class="panel-body">
+                <p class="help-text">O sistema identifica automaticamente as colunas da planilha por aproximação de nomes:</p>
+                <div class="table-responsive">
+                    <table class="help-table">
+                        <thead>
+                            <tr>
+                                <th>Dado</th>
+                                <th>Nomes Aceitos</th>
+                                <th>Exemplo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Latitude *</strong></td>
+                                <td>LATITUDE, LAT, Y</td>
+                                <td><code>-20.170578</code> ou <code>-19-57-19,08</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Longitude *</strong></td>
+                                <td>LONGITUDE, LONG, LON, X</td>
+                                <td><code>-44.917722</code> ou <code>-44-01-24,96</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Azimute</strong></td>
+                                <td>AZIMUTE, AZIMUTH, DIRECAO</td>
+                                <td><code>340</code> (graus 0 a 360)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Alcance / Raio</strong></td>
+                                <td>DISTANCIA, DISTÂNCIA, ALCANCE</td>
+                                <td><code>3000</code> (metros)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Abertura Setor</strong></td>
+                                <td>RAIO, ABERTURA, ARC</td>
+                                <td><code>60</code>, <code>90</code>, <code>120</code> (graus)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Identificação</strong></td>
+                                <td>NOME, ALVO, ERB</td>
+                                <td><code>ERB Centro</code>, <code>Fulano</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Operadora</strong></td>
+                                <td>OPERADORA, CARRIER</td>
+                                <td><code>VIVO</code>, <code>CLARO</code>, <code>TIM</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Delito/Crime</strong></td>
+                                <td>CRIME, DELITO, REDS</td>
+                                <td><code>C01157</code>, <code>Roubo</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cores</strong></td>
+                                <td>BORDA, PREENCHIMENTO, COR</td>
+                                <td><code>#FF0000</code>, <code>#FFFF00</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted mt-2 d-block">* Campos obrigatórios para renderização no mapa.</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

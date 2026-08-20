@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Editar usuário - ERB Maps{% endblock %}
+{% block content %}
+<div class="admin-edit-wrapper">
+  <div class="page-header"><div><h1 class="page-title">Editar usuário</h1><p class="page-subtitle">Atualize os dados cadastrais, acesso e foto do usuário.</p></div><a class="btn btn-outline" href="{{ url_for('admin.index') }}">Voltar</a></div>
+  <div class="panel-card admin-edit-card"><div class="panel-body">
+    <form method="post" enctype="multipart/form-data" action="{{ url_for('admin.update_user',user_id=user.id) }}" class="admin-edit-form">
+      <h2 class="form-section-title">Identificação</h2>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label" for="nome">Nome completo</label><input class="form-control" id="nome" name="nome_completo" value="{{ user.nome_completo or '' }}" maxlength="200" required autofocus></div>
+        <div class="form-group"><label class="form-label" for="cpf">CPF</label><input class="form-control" id="cpf" name="cpf" value="{{ user.cpf or '' }}" inputmode="numeric" maxlength="14" required></div>
+        <div class="form-group"><label class="form-label" for="username">Username</label><input class="form-control" id="username" name="username" value="{{ user.username }}" maxlength="120" required {% if user.username=='admin' %}readonly{% endif %}></div>
+        <div class="form-group"><label class="form-label" for="matricula">Matrícula</label><input class="form-control" id="matricula" name="matricula" value="{{ user.matricula or '' }}"></div>
+      </div>
+      <h2 class="form-section-title">Contato e endereço</h2>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label" for="email">E-mail</label><input class="form-control" type="email" id="email" name="email" value="{{ user.email or '' }}" maxlength="255"></div>
+        <div class="form-group"><label class="form-label" for="telefone">Telefone</label><input class="form-control" id="telefone" name="telefone" value="{{ user.telefone or '' }}"></div>
+        <div class="form-group"><label class="form-label" for="rua">Rua</label><input class="form-control" id="rua" name="rua" value="{{ user.rua or '' }}"></div>
+        <div class="form-group"><label class="form-label" for="numero">Número</label><input class="form-control" id="numero" name="numero" value="{{ user.numero or '' }}"></div>
+        <div class="form-group"><label class="form-label" for="bairro">Bairro</label><input class="form-control" id="bairro" name="bairro" value="{{ user.bairro or '' }}"></div>
+        <div class="form-group"><label class="form-label" for="cidade">Cidade</label><input class="form-control" id="cidade" name="cidade" value="{{ user.cidade or '' }}" maxlength="120"></div>
+        <div class="form-group"><label class="form-label" for="cep">CEP</label><input class="form-control" id="cep" name="cep" value="{{ user.cep or '' }}"></div>
+      </div>
+      <h2 class="form-section-title">Instituição</h2>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label" for="instituicao">Instituição</label><input class="form-control" id="instituicao" name="instituicao" value="{{ user.instituicao or '' }}"></div>
+        <div class="form-group"><label class="form-label" for="departamento">Departamento</label><input class="form-control" id="departamento" name="departamento" value="{{ user.departamento or '' }}"></div>
+        <div class="form-group"><label class="form-label" for="unidade">Unidade</label><input class="form-control" id="unidade" name="unidade" value="{{ user.unidade or '' }}"></div>
+        <div class="form-group"><label class="form-label" for="ueop">UEOP</label><input class="form-control" id="ueop" name="ueop" value="{{ user.ueop or '' }}"></div>
+        <div class="form-group"><label class="form-label" for="secao">Seção</label><input class="form-control" id="secao" name="secao" value="{{ user.secao or '' }}"></div>
+      </div>
+      <h2 class="form-section-title">Acesso e segurança</h2>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label" for="activated">Status</label><select class="form-control" id="activated" name="activated" required><option value="1" {% if user.activated %}selected{% endif %}>Ativo</option><option value="0" {% if not user.activated %}selected{% endif %}>Inativo</option></select></div>
+        <div class="form-group"><label class="form-label" for="type-user">Perfil</label><select class="form-control" id="type-user" name="type_user" required><option value="admin" {% if user.type_user=='admin' %}selected{% endif %}>Administrador</option><option value="editor" {% if user.type_user=='editor' %}selected{% endif %}>Editor</option><option value="view" {% if user.type_user=='view' %}selected{% endif %}>Visualizador</option></select></div>
+        <div class="form-group"><label class="form-label" for="new-password">Nova senha</label><input class="form-control" type="password" id="new-password" name="new_password" minlength="6" autocomplete="new-password" placeholder="Deixe vazio para manter a atual"></div>
+        <div class="form-group"><label class="form-label" for="password-confirm">Confirmar nova senha</label><input class="form-control" type="password" id="password-confirm" name="password_confirm" minlength="6" autocomplete="new-password"></div>
+      </div>
+      <h2 class="form-section-title">Foto</h2>
+      <div class="user-photo-edit">{% if user.photo %}<img class="user-photo-preview" src="{{ url_for('static',filename='uploads/users/'+user.photo) }}" alt="Foto atual">{% endif %}<div class="form-group"><label class="form-label" for="photo">Nova foto</label><input class="form-control" type="file" id="photo" name="photo" accept="image/jpeg,image/png,image/webp"><small>JPG, PNG ou WEBP, até 2 MB. Sem arquivo, a foto atual será mantida.</small></div></div>
+      <div class="admin-edit-actions"><button class="btn btn-primary" type="submit">Atualizar usuário</button><a class="btn btn-outline" href="{{ url_for('admin.index') }}">Cancelar</a></div>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

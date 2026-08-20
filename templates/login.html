@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block title %}Entrar - ERB Maps{% endblock %}
+{% block content %}<div class="auth-shell"><section class="auth-card"><h1>Bem-vindo ao ERB Maps</h1><p>Entre para acessar seus projetos autorizados.</p>
+<form method="post"><input type="hidden" name="next" value="{{ request.args.get('next','') }}">
+<label>Usuário<input class="form-control" name="username" required autofocus></label>
+<label>Senha<input class="form-control" type="password" name="password" required></label>
+<button class="btn btn-primary" type="submit">Entrar</button>
+<a class="btn btn-outline" href="{{ url_for('auth.register') }}">Cadastrar-se</a></form></section></div>{% endblock %}

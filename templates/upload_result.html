@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Resumo da Importação - ERB Maps{% endblock %}
+
+{% block content %}
+<div class="result-wrapper">
+    <div class="result-card">
+        <div class="result-header {% if result.success and result.errors == 0 %}header-success{% elif result.success %}header-warning{% else %}header-danger{% endif %}">
+            <div class="result-icon">
+                {% if result.success and result.errors == 0 %}
+                    ✅
+                {% elif result.success %}
+                    ⚠️
+                {% else %}
+                    ❌
+                {% endif %}
+            </div>
+            <h1 class="result-title">
+                {% if result.success and result.errors == 0 %}
+                    Importação Concluída com Sucesso!
+                {% elif result.success %}
+                    Importação Concluída com Avisos
+                {% else %}
+                    Falha na Importação
+                {% endif %}
+            </h1>
+            <p class="result-subtitle">{{ result.message }}</p>
+        </div>
+
+        <div class="result-body">
+            <div class="summary-box">
+                <div class="summary-item">
+                    <span class="summary-label">Arquivo:</span>
+                    <span class="summary-value"><strong>{{ original_name }}</strong></span>
+                </div>
+                {% if sheet_name %}
+                <div class="summary-item">
+                    <span class="summary-label">Aba Selecionada:</span>
+                    <span class="summary-value badge-subtle">{{ sheet_name }}</span>
+                </div>
+                {% endif %}
+                <div class="summary-item">
+                    <span class="summary-label">Registros encontrados:</span>
+                    <span class="summary-value">{{ "{:,}".format(result.total).replace(',', '.') }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Registros importados:</span>
+                    <span class="summary-value text-success font-bold">{{ "{:,}".format(result.imported).replace(',', '.') }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Registros com erro:</span>
+                    <span class="summary-value {% if result.errors > 0 %}text-danger font-bold{% else %}text-muted{% endif %}">
+                        {{ "{:,}".format(result.errors).replace(',', '.') }}
+                    </span>
+                </div>
+            </div>
+
+            {% if result.error_list %}
+                <div class="error-section mt-4">
+                    <h3 class="error-section-title">⚠️ Detalhes das Linhas com Inconsistência ({{ result.error_list|length }})</h3>
+                    <div class="error-log-box">
+                        <ul>
+                            {% for err in result.error_list %}
+                                <li>{{ err }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="result-actions mt-4">
+                {% if result.imported > 0 %}
+                    <a href="{{ url_for('map.view_map') }}" class="btn btn-primary btn-lg" id="btn-view-map">
+                        🗺️ Visualizar no Mapa
+                    </a>
+                    <a href="{{ url_for('antennas.list_antenas') }}" class="btn btn-secondary btn-lg" id="btn-view-table">
+                        📋 Ver Tabela de Antenas
+                    </a>
+                {% endif %}
+                <a href="{{ url_for('upload.upload_file') }}" class="btn btn-outline btn-lg" id="btn-new-upload">
+                    📤 Importar Outra Planilha
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

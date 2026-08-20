@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Projetos - ERB Maps{% endblock %}
+
+{% block content %}
+<div class="projects-page-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Projetos</h1>
+            <p class="page-subtitle">Crie e selecione contextos independentes para ERBs e pontos.</p>
+        </div>
+    </div>
+
+    <div class="projects-grid">
+        <div class="panel-card">
+            <div class="panel-header"><h2 class="panel-title">Novo Projeto</h2></div>
+            <div class="panel-body">
+                <form action="{{ url_for('projects.create_project') }}" method="POST">
+                    <div class="form-group">
+                        <label class="form-label" for="project-name">Nome do projeto</label>
+                        <input class="form-control" id="project-name" name="nome" maxlength="120" required autocomplete="off">
+                    </div>
+                    <button class="btn btn-primary btn-block" type="submit">Criar e Selecionar</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="panel-card">
+            <div class="panel-header"><h2 class="panel-title">Projetos disponíveis</h2></div>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead><tr><th>Nome</th><th>ERBs</th><th>Pontos</th><th>Importações</th><th>Ação</th></tr></thead>
+                    <tbody>
+                        {% for project in projetos %}
+                        <tr>
+                            <td>
+                                <strong>{{ project.nome }}</strong>
+                                {% if active_project and active_project.id == project.id %}
+                                    <span class="status-pill pill-success ml-2">Ativo</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ project.total_antenas }}</td>
+                            <td>{{ project.total_pontos }}</td>
+                            <td>{{ project.total_importacoes }}</td>
+                            <td>
+                                <div class="action-cell">
+                                {% if not active_project or active_project.id != project.id %}
+                                <form action="{{ url_for('projects.select_project') }}" method="POST">
+                                    <input type="hidden" name="project_id" value="{{ project.id }}">
+                                    <input type="hidden" name="next" value="{{ url_for('projects.list_projects') }}">
+                                    <button class="btn btn-sm btn-outline" type="submit">Selecionar</button>
+                                </form>
+                                {% endif %}
+                                <button type="button" class="btn btn-sm btn-outline btn-edit-project" data-id="{{ project.id }}" data-name="{{ project.nome }}">Editar</button>
+                                <form action="{{ url_for('projects.delete_project', project_id=project.id) }}" method="POST" onsubmit="return confirm('Deseja excluir este projeto? A exclusao so sera permitida se ele estiver vazio.');">
+                                    <button class="btn btn-sm btn-delete" type="submit">Excluir</button>
+                                </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="text-muted">Nenhum projeto criado.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="edit-project-modal" style="display:none;">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="edit-project-title">
+        <form id="edit-project-form" method="POST">
+            <div class="modal-header">
+                <h3 id="edit-project-title">Editar Projeto</h3>
+                <button type="button" class="modal-close" id="btn-close-edit-project">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="edit-project-name">Nome do projeto</label>
+                    <input class="form-control" id="edit-project-name" name="nome" maxlength="120" required autocomplete="off">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="btn-cancel-edit-project">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('edit-project-modal');
+    const form = document.getElementById('edit-project-form');
+    const nameInput = document.getElementById('edit-project-name');
+    const closeModal = () => { modal.style.display = 'none'; };
+
+    document.querySelectorAll('.btn-edit-project').forEach(button => {
+        button.addEventListener('click', () => {
+            form.action = `/projetos/${button.dataset.id}/editar`;
+            nameInput.value = button.dataset.name;
+            modal.style.display = 'flex';
+            nameInput.focus();
+            nameInput.select();
+        });
+    });
+    document.getElementById('btn-close-edit-project').addEventListener('click', closeModal);
+    document.getElementById('btn-cancel-edit-project').addEventListener('click', closeModal);
+    modal.addEventListener('click', event => { if (event.target === modal) closeModal(); });
+});
+</script>
+{% endblock %}

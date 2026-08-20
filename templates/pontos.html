@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Pontos Personalizados - ERB Maps{% endblock %}
+
+{% block content %}
+<div class="points-page-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Pontos Personalizados</h1>
+            <p class="page-subtitle">Gerencie os locais adicionados manualmente ao Mapa Interativo.</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('map.view_map') }}" class="btn btn-outline">Ver no Mapa</a>
+            <button type="button" class="btn btn-primary" id="btn-new-point" {% if current_user.type_user == 'view' %}disabled title="Perfil somente leitura"{% endif %}>+ Novo Ponto</button>
+        </div>
+    </div>
+
+    <div class="panel-card">
+        <div class="table-responsive">
+            <table class="data-table" id="points-table">
+                <thead>
+                    <tr>
+                        <th>ID</th><th>Tipo</th><th>Descrição</th><th>Latitude</th>
+                        <th>Longitude</th><th>Data de criação</th>{% if current_user.type_user != 'view' %}<th>Ações</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody id="points-table-body">
+                    {% for point in pontos %}
+                    <tr id="point-row-{{ point.id }}">
+                        <td>{{ point.id }}</td>
+                        <td><span class="status-pill point-type-pill">{{ point.tipo }}</span></td>
+                        <td class="point-description">{{ point.descricao }}</td>
+                        <td class="font-mono">{{ "%.6f"|format(point.latitude) }}</td>
+                        <td class="font-mono">{{ "%.6f"|format(point.longitude) }}</td>
+                        <td>{{ point.data_criacao }}</td>
+                        {% if current_user.type_user != 'view' %}<td class="action-cell">
+                            <button type="button" class="btn-icon btn-edit-point" data-id="{{ point.id }}" title="Editar">Editar</button>
+                            <button type="button" class="btn-icon btn-delete btn-delete-point" data-id="{{ point.id }}" title="Excluir">Excluir</button>
+                        </td>{% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="empty-state" id="points-empty" {% if pontos %}style="display:none"{% endif %}>
+                <p>Nenhum ponto cadastrado.</p>
+                {% if current_user.type_user != 'view' %}<a href="{{ url_for('map.view_map') }}" class="btn btn-primary mt-3">Adicionar pelo Mapa</a>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="point-modal" style="display:none;">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="point-modal-title">
+        <form id="point-form">
+            <div class="modal-header">
+                <h3 id="point-modal-title">Novo Ponto</h3>
+                <button type="button" class="modal-close" id="btn-close-point-modal" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="point-id">
+                <div class="form-group">
+                    <label class="form-label" for="point-type">Tipo</label>
+                    <select class="form-control" id="point-type" required>
+                        {% for type in point_types %}<option value="{{ type }}">{{ type }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="point-description">Descrição</label>
+                    <textarea class="form-control" id="point-description" rows="4" maxlength="1000" required></textarea>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label" for="point-latitude">Latitude</label>
+                        <input class="form-control" id="point-latitude" type="number" min="-90" max="90" step="any" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="point-longitude">Longitude</label>
+                        <input class="form-control" id="point-longitude" type="number" min="-180" max="180" step="any" required>
+                    </div>
+                </div>
+                <p class="form-error" id="point-form-error" role="alert"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="btn-cancel-point">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="btn-save-point">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('point-modal');
+    const form = document.getElementById('point-form');
+    const errorBox = document.getElementById('point-form-error');
+    const idInput = document.getElementById('point-id');
+    const typeInput = document.getElementById('point-type');
+    const descriptionInput = document.getElementById('point-description');
+    const latitudeInput = document.getElementById('point-latitude');
+    const longitudeInput = document.getElementById('point-longitude');
+    const saveButton = document.getElementById('btn-save-point');
+
+    const closeModal = () => { modal.style.display = 'none'; };
+    const openModal = (point = null) => {
+        form.reset();
+        errorBox.textContent = '';
+        idInput.value = point ? point.id : '';
+        document.getElementById('point-modal-title').textContent = point ? `Editar Ponto #${point.id}` : 'Novo Ponto';
+        if (point) {
+            typeInput.value = point.tipo;
+            descriptionInput.value = point.descricao;
+            latitudeInput.value = point.latitude;
+            longitudeInput.value = point.longitude;
+        }
+        modal.style.display = 'flex';
+        (point ? descriptionInput : typeInput).focus();
+    };
+
+    async function requestJson(url, options = {}) {
+        const response = await fetch(url, options);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Não foi possível concluir a operação.');
+        return data;
+    }
+
+    function createCell(text, className = '') {
+        const cell = document.createElement('td');
+        cell.textContent = text;
+        if (className) cell.className = className;
+        return cell;
+    }
+
+    function renderPoints(points) {
+        const body = document.getElementById('points-table-body');
+        body.replaceChildren();
+        points.forEach(point => {
+            const row = document.createElement('tr');
+            row.id = `point-row-${point.id}`;
+            row.appendChild(createCell(point.id));
+
+            const typeCell = document.createElement('td');
+            const typePill = document.createElement('span');
+            typePill.className = 'status-pill point-type-pill';
+            typePill.textContent = point.tipo;
+            typeCell.appendChild(typePill);
+            row.appendChild(typeCell);
+
+            row.appendChild(createCell(point.descricao, 'point-description'));
+            row.appendChild(createCell(Number(point.latitude).toFixed(6), 'font-mono'));
+            row.appendChild(createCell(Number(point.longitude).toFixed(6), 'font-mono'));
+            row.appendChild(createCell(point.data_criacao));
+
+            const actions = document.createElement('td');
+            actions.className = 'action-cell';
+            const editButton = document.createElement('button');
+            editButton.type = 'button';
+            editButton.className = 'btn-icon btn-edit-point';
+            editButton.dataset.id = point.id;
+            editButton.textContent = 'Editar';
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'btn-icon btn-delete btn-delete-point';
+            deleteButton.dataset.id = point.id;
+            deleteButton.textContent = 'Excluir';
+            actions.append(editButton, deleteButton);
+            row.appendChild(actions);
+            body.appendChild(row);
+        });
+        document.getElementById('points-empty').style.display = points.length ? 'none' : 'block';
+    }
+
+    async function refreshPoints() {
+        const result = await requestJson('/api/pontos');
+        renderPoints(result.data);
+    }
+
+    document.getElementById('btn-new-point').addEventListener('click', () => openModal());
+    document.getElementById('btn-close-point-modal').addEventListener('click', closeModal);
+    document.getElementById('btn-cancel-point').addEventListener('click', closeModal);
+    modal.addEventListener('click', event => { if (event.target === modal) closeModal(); });
+
+    document.getElementById('points-table-body').addEventListener('click', async event => {
+        const editButton = event.target.closest('.btn-edit-point');
+        const deleteButton = event.target.closest('.btn-delete-point');
+        if (editButton) {
+            try {
+                const result = await requestJson(`/api/pontos/${editButton.dataset.id}`);
+                openModal(result.data);
+            } catch (error) { window.alert(error.message); }
+        }
+        if (deleteButton) {
+            if (!window.confirm('Deseja realmente excluir este ponto?')) return;
+            try {
+                await requestJson(`/api/pontos/${deleteButton.dataset.id}`, {method: 'DELETE'});
+                await refreshPoints();
+            } catch (error) { window.alert(error.message); }
+        }
+    });
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        const pointId = idInput.value;
+        const payload = {
+            tipo: typeInput.value,
+            descricao: descriptionInput.value.trim(),
+            latitude: Number(latitudeInput.value),
+            longitude: Number(longitudeInput.value)
+        };
+        errorBox.textContent = '';
+        saveButton.disabled = true;
+        try {
+            await requestJson(pointId ? `/api/pontos/${pointId}` : '/api/pontos', {
+                method: pointId ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            closeModal();
+            await refreshPoints();
+        } catch (error) {
+            errorBox.textContent = error.message;
+            saveButton.disabled = false;
+        }
+    });
+
+    const editId = new URLSearchParams(window.location.search).get('edit');
+    if (/^\d+$/.test(editId || '')) document.querySelector(`.btn-edit-point[data-id="${editId}"]`)?.click();
+});
+</script>
+{% endblock %}

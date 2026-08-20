@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block title %}Cadastro - ERB Maps{% endblock %}
+{% block content %}<div class="auth-shell"><section class="auth-card auth-wide"><h1>Criar cadastro</h1><p>Após o envio, a conta ficará aguardando aprovação.</p>
+<form method="post" enctype="multipart/form-data" class="form-grid">
+{% for name,label,required in [('nome_completo','Nome completo',1),('cpf','CPF',1),('username','Username',1),('email','E-mail',0),('telefone','Telefone',0),('rua','Rua',0),('numero','Número',0),('bairro','Bairro',0),('cidade','Cidade',0),('cep','CEP',0),('instituicao','Instituição',0),('departamento','Departamento',0)] %}
+<label>{{ label }}<input class="form-control" name="{{ name }}" value="{{ request.form.get(name,'') }}" {% if required %}required{% endif %}></label>{% endfor %}
+<label>Senha<input class="form-control" type="password" name="password" minlength="6" required></label>
+<label>Confirmar senha<input class="form-control" type="password" name="password_confirm" minlength="6" required></label>
+<label>Foto (JPG, PNG ou WEBP; até 2 MB)<input class="form-control" type="file" name="photo" accept="image/jpeg,image/png,image/webp"></label>
+<div><button class="btn btn-primary">Cadastrar</button> <a class="btn btn-outline" href="{{ url_for('auth.login') }}">Voltar</a></div></form></section></div>{% endblock %}

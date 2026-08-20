@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Usuários - ERB Maps{% endblock %}
+
+{% block content %}
+<div class="admin-page-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Usuários</h1>
+            <p class="page-subtitle">Gerencie o status e o perfil dos usuários cadastrados.</p>
+        </div>
+    </div>
+
+    <div class="panel-card">
+        <div class="panel-body table-responsive">
+            {% if users %}
+            <table class="data-table admin-users-table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Cidade</th>
+                        <th>Status</th>
+                        <th>Perfil</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td data-label="Nome"><strong>{{ user.nome_completo or user.username }}</strong></td>
+                        <td data-label="Cidade">{{ user.cidade or 'Não informada' }}</td>
+                        <td data-label="Status">
+                            <span class="status-pill {{ 'pill-success' if user.activated else 'pill-warning' }}">
+                                {{ 'Ativo' if user.activated else 'Inativo' }}
+                            </span>
+                        </td>
+                        <td data-label="Perfil">
+                            <span class="role-pill role-{{ user.type_user }}">
+                                {{ {'admin':'Administrador','editor':'Editor','view':'Visualizador'}.get(user.type_user,user.type_user) }}
+                            </span>
+                        </td>
+                        <td data-label="Ações" class="action-cell admin-user-actions">
+                            <a class="btn btn-sm btn-outline" href="{{ url_for('admin.edit_user',user_id=user.id) }}">Editar</a>
+                            <form method="post" action="{{ url_for('admin.delete_user',user_id=user.id) }}"
+                                  onsubmit="return confirm('Tem certeza que deseja excluir este usuário? Esta ação não poderá ser desfeita.');">
+                                <button class="btn btn-sm btn-delete" type="submit">Excluir</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state"><p>Nenhum usuário cadastrado.</p></div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

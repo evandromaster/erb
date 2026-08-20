@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico de Importações - ERB Maps{% endblock %}
+
+{% block content %}
+<div class="history-page-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Histórico de Importações</h1>
+            <p class="page-subtitle">Gerenciamento de arquivos processados e lotes de dados importados.</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('upload.upload_file') }}" class="btn btn-primary">
+                ➕ Novo Upload
+            </a>
+        </div>
+    </div>
+
+    <div class="panel-card">
+        <div class="panel-body table-responsive">
+            {% if importacoes %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Data / Hora</th>
+                            <th>Arquivo Original</th>
+                            <th>Aba</th>
+                            <th>Total de Linhas</th>
+                            <th>Importados</th>
+                            <th>Erros</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for imp in importacoes %}
+                            <tr>
+                                <td>#{{ imp['id'] }}</td>
+                                <td>{{ imp['data_importacao'][:19] }}</td>
+                                <td><strong>{{ imp['nome_original'] }}</strong></td>
+                                <td><span class="badge-subtle">{{ imp['aba_selecionada'] or 'Padrão' }}</span></td>
+                                <td>{{ imp['total_registros'] }}</td>
+                                <td class="text-success font-bold">{{ imp['registros_importados'] }}</td>
+                                <td class="{% if imp['registros_erro'] > 0 %}text-danger font-bold{% else %}text-muted{% endif %}">
+                                    {{ imp['registros_erro'] }}
+                                </td>
+                                <td>
+                                    {% if imp['status'] == 'sucesso' %}
+                                        <span class="status-pill pill-success">Sucesso</span>
+                                    {% elif imp['status'] == 'parcial' %}
+                                        <span class="status-pill pill-warning">Parcial</span>
+                                    {% else %}
+                                        <span class="status-pill pill-danger">Erro</span>
+                                    {% endif %}
+                                </td>
+                                <td class="action-cell">
+                                    <a href="{{ url_for('map.view_map', importacao_id=imp['id']) }}" class="btn-icon" title="Ver Lote no Mapa">
+                                        🗺️
+                                    </a>
+                                    <form action="{{ url_for('antennas.delete_history', import_id=imp['id']) }}" method="POST" class="d-inline" onsubmit="return confirm('Deseja realmente excluir este lote e todas as suas antenas?');">
+                                        <button type="submit" class="btn-icon btn-delete" title="Excluir Lote">
+                                            🗑️
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">
+                    <p>Nenhuma importação registrada até o momento.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
